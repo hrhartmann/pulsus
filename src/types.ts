@@ -1,12 +1,14 @@
 // Modelo de datos de Pulsus. Todo vive en IndexedDB (ver src/db/db.ts).
 
 /** Icono de un ejercicio o rutina: un emoji o una imagen guardada en la tabla `images`. */
-export type IconValue =
-  | { kind: 'emoji'; value: string }
-  | { kind: 'image'; imageId: string }
+export type IconValue = { kind: 'emoji'; value: string } | { kind: 'image'; imageId: string }
 
-/** `time`: corre un timer y avanza solo. `reps`: muestra las repeticiones y espera a que toques "Listo". */
-export type ExerciseMode = 'time' | 'reps'
+/**
+ * `time`: corre un timer y avanza solo.
+ * `reps`: muestra las repeticiones y espera a que toques "Listo".
+ * `max`: máximo de repeticiones; espera "Listo" y pregunta cuántas hiciste.
+ */
+export type ExerciseMode = 'time' | 'reps' | 'max'
 
 /** Ejercicio de la biblioteca. Se reutiliza en varias rutinas. */
 export interface Exercise {
@@ -16,11 +18,19 @@ export interface Exercise {
   color: string
   /** Foto o GIF para revisar la técnica. Id en la tabla `images`. */
   techniqueImageId?: string
-  notes?: string
+  /** Ficha: cómo se hace. */
+  description?: string
+  /** Ficha: claves de técnica. (En la versión 1 se llamaba `notes`.) */
+  tips?: string
+  /** Ficha: variante más fácil. */
+  easier?: string
+  /** Ficha: variante más difícil. */
+  harder?: string
   /** Valores sugeridos al agregarlo a una rutina. */
   defaultMode: ExerciseMode
   defaultSeconds: number
   defaultReps: number
+  defaultPerSide?: boolean
   createdAt: number
   updatedAt: number
 }
@@ -37,7 +47,9 @@ export interface ExerciseStep {
   sets: number
   /** Descanso entre series (seg). 0 = sin descanso. Solo se inserta ENTRE series, no después de la última. */
   restBetweenSets: number
-  /** Texto libre: peso, variante, etc. */
+  /** Se hace por lado (izquierda y derecha) en cada serie. */
+  perSide?: boolean
+  /** Texto libre: peso, variante, rango, etc. */
   note?: string
 }
 
@@ -51,18 +63,27 @@ export interface RestStep {
 
 export type RoutineStep = ExerciseStep | RestStep
 
+/** Sección de una rutina: Calentamiento, Principal, Core… El nombre es opcional. */
+export interface Block {
+  id: string
+  name: string
+  steps: RoutineStep[]
+}
+
 export interface Routine {
   id: string
   name: string
+  /** Texto corto opcional: cuándo, dónde, cuánto dura. */
+  description?: string
   icon: IconValue
   color: string
   /** Cuenta regresiva antes del primer ejercicio (seg). 0 = sin preparación. */
   prepSeconds: number
-  /** Repetir la lista completa de pasos N veces. */
+  /** Repetir la rutina completa N veces. */
   rounds: number
   /** Descanso entre vueltas (seg). */
   restBetweenRounds: number
-  steps: RoutineStep[]
+  blocks: Block[]
   createdAt: number
   updatedAt: number
 }
@@ -76,6 +97,7 @@ export interface StoredImage {
 // ---------- Reproductor ----------
 
 export type SegmentKind = 'prep' | 'exercise' | 'rest'
+export type Side = 'left' | 'right'
 
 /**
  * Un "pedazo" de la rutina ya expandida (series, vueltas y descansos incluidos).
@@ -87,6 +109,10 @@ export interface Segment {
   advance: 'auto' | 'manual'
   seconds?: number
   reps?: number
+  /** Máximo de repeticiones. */
+  max?: boolean
+  side?: Side
+  block?: string
   name: string
   icon: IconValue
   color: string
@@ -106,6 +132,8 @@ export interface SegmentLog {
   /** Tiempo real que pasaste en el segmento (suma todas las visitas). */
   elapsedMs: number
   status: SegmentStatus
+  /** Repeticiones anotadas (segmentos de máximo). */
+  reps?: number
 }
 
 /** Una rutina realizada. Guarda una foto de la rutina tal como se hizo, aunque después la edites o la borres. */
@@ -131,6 +159,11 @@ export interface SessionSegment {
   emoji?: string
   plannedSeconds?: number
   plannedReps?: number
+  max?: boolean
+  /** Repeticiones que anotaste al terminar un segmento de máximo. */
+  actualReps?: number
+  side?: Side
+  block?: string
   set?: number
   sets?: number
   round: number

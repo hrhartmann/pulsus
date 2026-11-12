@@ -4,7 +4,7 @@ import { Link, useLocation } from 'wouter'
 import { unlockAudio } from '../audio/audio'
 import { BigTitle, EmptyState, IconBadge, Ico } from '../components/ui'
 import { db } from '../db/db'
-import { estimateDuration, expandRoutine } from '../engine/expand'
+import { allSteps, estimateDuration, expandRoutine } from '../engine/expand'
 import { loadActive } from '../lib/active'
 import { color } from '../lib/colors'
 import { approxMinutes, shortDate } from '../lib/format'
@@ -81,19 +81,29 @@ function RoutineCard({ routine, exMap, last, onPlay }: { routine: Routine; exMap
   const c = color(routine.color)
   const segs = expandRoutine(routine, exMap)
   const { seconds, manualCount } = estimateDuration(segs)
-  const exerciseCount = routine.steps.filter((s) => s.type === 'exercise').length
-  const preview = routine.steps.flatMap((s) => (s.type === 'exercise' ? [exMap.get(s.exerciseId)] : [])).filter(Boolean).slice(0, 6) as Exercise[]
+  const exerciseCount = allSteps(routine).filter((s) => s.type === 'exercise').length
+  const preview = allSteps(routine)
+    .flatMap((s) => (s.type === 'exercise' ? [exMap.get(s.exerciseId)] : []))
+    .filter(Boolean)
+    .slice(0, 6) as Exercise[]
 
   return (
-    <div className="relative overflow-hidden rounded-3xl border border-line bg-surface" style={{ backgroundImage: `radial-gradient(120% 90% at 100% 0%, ${c.solid}22, transparent 60%)` }}>
+    <div
+      className="relative overflow-hidden rounded-3xl border border-line bg-surface"
+      style={{ backgroundImage: `radial-gradient(120% 90% at 100% 0%, ${c.solid}22, transparent 60%)` }}
+    >
       <Link href={`/rutina/${routine.id}`} className="block p-4 pr-24">
         <div className="flex items-center gap-3">
           <IconBadge icon={routine.icon} colorKey={routine.color} size={52} />
           <div className="min-w-0">
             <div className="truncate font-display text-2xl leading-tight font-bold tracking-wide uppercase">{routine.name}</div>
-            <div className="text-sm text-muted">
-              {exerciseCount} ejercicio{exerciseCount === 1 ? '' : 's'}
-              {routine.rounds > 1 && ` · ${routine.rounds} vueltas`}
+            <div className="truncate text-sm text-muted">
+              {routine.description || (
+                <>
+                  {exerciseCount} ejercicio{exerciseCount === 1 ? '' : 's'}
+                  {routine.rounds > 1 && ` · ${routine.rounds} vueltas`}
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -104,7 +114,7 @@ function RoutineCard({ routine, exMap, last, onPlay }: { routine: Routine; exMap
         </div>
         <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted">
           <span>⏱ ≈ {approxMinutes(seconds)}</span>
-          {manualCount > 0 && <span>✋ + {manualCount} por repeticiones</span>}
+          {manualCount > 0 && <span>✋ + {manualCount} a tu ritmo</span>}
           {last && <span>Última vez: {shortDate(last)}</span>}
         </div>
       </Link>
@@ -138,7 +148,8 @@ function InstallHint() {
         <div className="flex-1 text-sm">
           <div className="font-semibold">Instala Pulsus en tu iPhone</div>
           <div className="mt-1 text-muted">
-            En Safari toca <b>Compartir</b> <span className="inline-block translate-y-0.5">{Ico.share}</span> y luego <b>Agregar a inicio</b>. Así funciona sin internet y a pantalla completa.
+            En Safari toca <b>Compartir</b> <span className="inline-block translate-y-0.5">{Ico.share}</span> y luego <b>Agregar a inicio</b>. Así funciona sin internet y a
+            pantalla completa.
           </div>
         </div>
         <button

@@ -30,13 +30,21 @@ const routine = (over: Partial<Routine> = {}): Routine => ({
   restBetweenRounds: 0,
   createdAt: 0,
   updatedAt: 0,
-  steps: [
-    { id: 's1', type: 'exercise', exerciseId: 'sq', mode: 'time', seconds: 30, reps: 0, sets: 1, restBetweenSets: 0 },
-    { id: 's2', type: 'rest', seconds: 15 },
-    { id: 's3', type: 'exercise', exerciseId: 'bp', mode: 'reps', seconds: 0, reps: 12, sets: 3, restBetweenSets: 60 },
+  blocks: [
+    {
+      id: 'b1',
+      name: 'Principal',
+      steps: [
+        { id: 's1', type: 'exercise', exerciseId: 'sq', mode: 'time', seconds: 30, reps: 0, sets: 1, restBetweenSets: 0 },
+        { id: 's2', type: 'rest', seconds: 15 },
+        { id: 's3', type: 'exercise', exerciseId: 'bp', mode: 'reps', seconds: 0, reps: 12, sets: 3, restBetweenSets: 60 },
+      ],
+    },
   ],
   ...over,
 })
+
+const oneBlock = (steps: Routine['blocks'][0]['steps']): Partial<Routine> => ({ prepSeconds: 0, blocks: [{ id: 'b', name: '', steps }] })
 
 describe('expandRoutine', () => {
   it('expande preparación, series y descansos entre series', () => {
@@ -57,11 +65,50 @@ describe('expandRoutine', () => {
   })
 
   it('repite vueltas con descanso entre vueltas', () => {
+    const segs = expandRoutine(routine({ ...oneBlock([routine().blocks[0].steps[0]]), rounds: 2, restBetweenRounds: 90 }), lib)
+    expect(segs.map((s) => `${s.kind}:${s.round}`)).toEqual(['exercise:1', 'rest:2', 'exercise:2'])
+  })
+
+  it('marca el bloque de cada segmento y une bloques en orden', () => {
+    const r = routine({
+      prepSeconds: 0,
+      blocks: [
+        { id: 'a', name: 'Calentamiento', steps: [{ id: 'x', type: 'rest', seconds: 10, label: 'Movilidad' }] },
+        { id: 'b', name: '  ', steps: [{ id: 'y', type: 'exercise', exerciseId: 'sq', mode: 'time', seconds: 20, reps: 0, sets: 1, restBetweenSets: 0 }] },
+      ],
+    })
+    const segs = expandRoutine(r, lib)
+    expect(segs.map((s) => `${s.name}:${s.block}`)).toEqual(['Movilidad:Calentamiento', 'Sentadillas:undefined'])
+  })
+
+  it('por lado y por tiempo: izquierda, cambio de 5 s, derecha, en cada serie', () => {
     const segs = expandRoutine(
-      routine({ prepSeconds: 0, rounds: 2, restBetweenRounds: 90, steps: [routine().steps[0]] }),
+      routine(oneBlock([{ id: 'p', type: 'exercise', exerciseId: 'sq', mode: 'time', seconds: 20, reps: 0, sets: 2, restBetweenSets: 30, perSide: true }])),
       lib,
     )
-    expect(segs.map((s) => `${s.kind}:${s.round}`)).toEqual(['exercise:1', 'rest:2', 'exercise:2'])
+    expect(segs.map((s) => `${s.name}:${s.side ?? '-'}:${s.seconds}:${s.set ?? '-'}`)).toEqual([
+      'Sentadillas:left:20:1',
+      'Cambia de lado:-:5:-',
+      'Sentadillas:right:20:1',
+      'Descanso:-:30:-',
+      'Sentadillas:left:20:2',
+      'Cambia de lado:-:5:-',
+      'Sentadillas:right:20:2',
+    ])
+  })
+
+  it('por lado y por repeticiones: sin pausa de cambio (ya espera "Listo")', () => {
+    const segs = expandRoutine(
+      routine(oneBlock([{ id: 'p', type: 'exercise', exerciseId: 'bp', mode: 'reps', seconds: 0, reps: 8, sets: 1, restBetweenSets: 0, perSide: true }])),
+      lib,
+    )
+    expect(segs.map((s) => `${s.side}:${s.reps}:${s.advance}`)).toEqual(['left:8:manual', 'right:8:manual'])
+  })
+
+  it('máximo de repeticiones: manual y marcado como max', () => {
+    const segs = expandRoutine(routine(oneBlock([{ id: 'm', type: 'exercise', exerciseId: 'bp', mode: 'max', seconds: 0, reps: 0, sets: 1, restBetweenSets: 0 }])), lib)
+    expect(segs).toHaveLength(1)
+    expect(segs[0]).toMatchObject({ advance: 'manual', max: true, reps: undefined })
   })
 
   it('estima la duración separando los manuales', () => {
@@ -142,6 +189,15 @@ describe('player', () => {
     expect(session.segments).toHaveLength(segs.length)
     expect(session.segments[0].status).toBe('skipped')
     expect(session.segments.at(-1)?.status).toBe('done')
+  })
+
+  it('anota las reps de un máximo y quedan en el historial', () => {
+    const segs2 = expandRoutine(routine(oneBlock([{ id: 'm', type: 'exercise', exerciseId: 'bp', mode: 'max', seconds: 0, reps: 0, sets: 1, restBetweenSets: 0 }])), lib)
+    let { state } = P.start(segs2, T0)
+    state = P.setReps(state, 0, 11)
+    state = P.next(state, T0 + 30_000).state
+    const s = P.toSession(state, routine(), 'x')
+    expect(s.segments[0]).toMatchObject({ max: true, actualReps: 11, status: 'done', elapsedMs: 30_000 })
   })
 
   it('terminar antes deja la sesión incompleta', () => {

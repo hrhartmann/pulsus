@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hrhartmann.github.io/pulsus/pulsus-pack.schema.json",
+  "title": "Paquete de rutinas Pulsus (pulsus-pack/1)",
+  "description": "Ejercicios y rutinas para importar en Pulsus. La app valida además que cada paso use un ejercicio existente y que los ids no se repitan.",
+  "type": "object",
+  "required": ["format"],
+  "additionalProperties": false,
+  "properties": {
+    "format": { "const": "pulsus-pack/1" },
+    "name": { "type": "string", "maxLength": 80 },
+    "description": { "type": "string", "maxLength": 500 },
+    "exercises": { "type": "array", "items": { "$ref": "#/$defs/exercise" } },
+    "routines": { "type": "array", "items": { "$ref": "#/$defs/routine" } }
+  },
+  "anyOf": [{ "required": ["exercises"] }, { "required": ["routines"] }],
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]{0,63}$",
+      "description": "Minúsculas, números y guiones. Estable: si cambia, Pulsus lo trata como otro ejercicio/rutina."
+    },
+    "emoji": { "type": "string", "minLength": 1, "maxLength": 16, "description": "Un solo emoji." },
+    "color": {
+      "enum": ["red", "orange", "amber", "lime", "green", "teal", "sky", "indigo", "violet", "pink", "slate"]
+    },
+    "exercise": {
+      "type": "object",
+      "required": ["id", "name"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 60 },
+        "emoji": { "$ref": "#/$defs/emoji" },
+        "color": { "$ref": "#/$defs/color" },
+        "description": { "type": "string", "maxLength": 1000, "description": "Cómo se hace." },
+        "tips": { "type": "string", "maxLength": 1000, "description": "Claves de técnica." },
+        "easier": { "type": "string", "maxLength": 1000, "description": "Variante más fácil." },
+        "harder": { "type": "string", "maxLength": 1000, "description": "Variante más difícil." },
+        "mode": { "enum": ["time", "reps", "max"], "description": "Modo sugerido al agregarlo a mano en la app." },
+        "seconds": { "type": "integer", "minimum": 1, "maximum": 3600 },
+        "reps": { "type": "integer", "minimum": 1, "maximum": 1000 },
+        "perSide": { "type": "boolean" }
+      }
+    },
+    "routine": {
+      "type": "object",
+      "required": ["id", "name", "blocks"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 60 },
+        "description": { "type": "string", "maxLength": 300 },
+        "emoji": { "$ref": "#/$defs/emoji" },
+        "color": { "$ref": "#/$defs/color" },
+        "prepSeconds": { "type": "integer", "minimum": 0, "maximum": 300, "description": "Cuenta regresiva inicial. Por defecto 10." },
+        "blocks": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/block" } }
+      }
+    },
+    "block": {
+      "type": "object",
+      "required": ["steps"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string", "maxLength": 40 },
+        "steps": { "type": "array", "items": { "oneOf": [{ "$ref": "#/$defs/exerciseStep" }, { "$ref": "#/$defs/restStep" }] } }
+      }
+    },
+    "exerciseStep": {
+      "type": "object",
+      "required": ["exercise"],
+      "additionalProperties": false,
+      "properties": {
+        "exercise": { "$ref": "#/$defs/id" },
+        "seconds": { "type": "integer", "minimum": 1, "maximum": 3600 },
+        "reps": { "type": "integer", "minimum": 1, "maximum": 1000 },
+        "max": { "const": true },
+        "sets": { "type": "integer", "minimum": 1, "maximum": 20 },
+        "restBetweenSets": { "type": "integer", "minimum": 0, "maximum": 900 },
+        "perSide": { "type": "boolean" },
+        "note": { "type": "string", "maxLength": 120 }
+      },
+      "oneOf": [{ "required": ["seconds"] }, { "required": ["reps"] }, { "required": ["max"] }]
+    },
+    "restStep": {
+      "type": "object",
+      "required": ["rest"],
+      "additionalProperties": false,
+      "properties": {
+        "rest": { "type": "integer", "minimum": 1, "maximum": 3600 },
+        "label": { "type": "string", "maxLength": 40 }
+      }
+    }
+  }
+}

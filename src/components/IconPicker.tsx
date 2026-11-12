@@ -5,28 +5,73 @@ import type { IconValue } from '../types'
 import { Button, IconBadge, Sheet, inputCls } from './ui'
 
 const EMOJIS = [
-  '🏋️', '💪', '🦵', '🦶', '🔥', '⚡', '🏃', '🚴', '🏊', '🧘', '🤸', '🧗',
-  '🥊', '🤾', '⛹️', '🚣', '🏌️', '🤼', '🦾', '🫀', '🫁', '🧠', '🎯', '🏆',
-  '⛰️', '🧱', '🪜', '🪢', '🏐', '⚽', '🏀', '🎾', '🏓', '🛹', '⛷️', '🥋',
-  '⏱️', '⏳', '😤', '😮‍💨', '🥵', '💀', '🚀', '💥', '🌊', '🌪️', '❄️', '☀️',
-  '🐢', '🐇', '🦍', '🐻', '🦅', '🐍', '🦘', '🐆', '🍌', '🥤', '💧', '✨',
+  '🏋️',
+  '💪',
+  '🦵',
+  '🦶',
+  '🔥',
+  '⚡',
+  '🏃',
+  '🚴',
+  '🏊',
+  '🧘',
+  '🤸',
+  '🧗',
+  '🥊',
+  '🤾',
+  '⛹️',
+  '🚣',
+  '🏌️',
+  '🤼',
+  '🦾',
+  '🫀',
+  '🫁',
+  '🧠',
+  '🎯',
+  '🏆',
+  '⛰️',
+  '🧱',
+  '🪜',
+  '🪢',
+  '🏐',
+  '⚽',
+  '🏀',
+  '🎾',
+  '🏓',
+  '🛹',
+  '⛷️',
+  '🥋',
+  '⏱️',
+  '⏳',
+  '😤',
+  '😮‍💨',
+  '🥵',
+  '💀',
+  '🚀',
+  '💥',
+  '🌊',
+  '🌪️',
+  '❄️',
+  '☀️',
+  '🐢',
+  '🐇',
+  '🦍',
+  '🐻',
+  '🦅',
+  '🐍',
+  '🦘',
+  '🐆',
+  '🍌',
+  '🥤',
+  '💧',
+  '✨',
 ]
 
 /**
  * Elegir icono y color. El icono puede ser un emoji de la lista, cualquier emoji del teclado,
  * o una imagen de la galería (se recorta cuadrada).
  */
-export function IconPicker({
-  icon,
-  colorKey,
-  onChange,
-  size = 72,
-}: {
-  icon: IconValue
-  colorKey: string
-  onChange: (icon: IconValue, colorKey: string) => void
-  size?: number
-}) {
+export function IconPicker({ icon, colorKey, onChange, size = 72 }: { icon: IconValue; colorKey: string; onChange: (icon: IconValue, colorKey: string) => void; size?: number }) {
   const [open, setOpen] = useState(false)
   const [custom, setCustom] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
@@ -78,12 +123,7 @@ export function IconPicker({
         </div>
 
         <div className="mt-4 flex gap-2">
-          <input
-            className={inputCls}
-            placeholder="O escribe cualquier emoji"
-            value={custom}
-            onChange={(e) => setCustom(e.target.value)}
-          />
+          <input className={inputCls} placeholder="O escribe cualquier emoji" value={custom} onChange={(e) => setCustom(e.target.value)} />
           <Button
             variant="secondary"
             disabled={!custom.trim()}

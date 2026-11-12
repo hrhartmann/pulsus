@@ -42,3 +42,16 @@ Session { routineName, startedAt, endedAt, durationMs, completed, routineSnapsho
 - Que los bips suenen con el switch de silencio activado (Ajustes → “Con música de fondo”).
 - Cómo convive con Spotify: “Encima” (baja la música un momento), “Mezclar” o “Solo”.
 - Que la pantalla no se apague durante una rutina (Wake Lock, iOS 18.4+).
+
+## v0.2 (2026-11-12)
+
+- **Bloques** dentro de cada rutina (Calentamiento, Principal, Core…). El reproductor y el historial muestran el bloque.
+- **Por lado**: un paso puede hacerse por lado; genera Izquierda y Derecha en cada serie. Si es por tiempo, va una
+  pausa automática de 5 s para cambiar de lado.
+- **Máximo de repeticiones** (`max`): espera “Listo” y pregunta cuántas hiciste; queda en el historial y en el CSV.
+- **Ficha** del ejercicio: descripción, tips, más fácil, más difícil (se ven con el botón “i” en el reproductor).
+  No se leen en voz alta.
+- **Sin rangos** ni vueltas de circuito en el formato: números fijos, el rango va en la nota.
+- **Paquetes de rutinas** (`pulsus-pack/1`) para que otro agente cree rutinas y Hans solo las importe.
+  Importar es idempotente (ids estables). Ver docs/PAQUETES.md.
+- Las alternativas (“si no hay paralelas…”) no tienen campo propio: van en `note` o en `easier`.

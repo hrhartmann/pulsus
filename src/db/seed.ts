@@ -21,12 +21,13 @@ export async function seedIfFirstRun(): Promise<void> {
 
 export async function loadExamples(): Promise<void> {
   const now = Date.now()
-  const mk = (name: string, emoji: string, color: string, mode: 'time' | 'reps', seconds: number, reps: number, notes?: string): Exercise => ({
+  const mk = (name: string, emoji: string, color: string, mode: 'time' | 'reps', seconds: number, reps: number, tips?: string, description?: string): Exercise => ({
     id: newId(),
     name,
     icon: { kind: 'emoji', value: emoji },
     color,
-    notes,
+    tips,
+    description,
     defaultMode: mode,
     defaultSeconds: seconds,
     defaultReps: reps,
@@ -41,9 +42,22 @@ export async function loadExamples(): Promise<void> {
   const escaladores = mk('Escaladores', '⛰️', 'lime', 'time', 30, 20)
   const pressBanca = mk('Press banca', '🏋️', 'sky', 'reps', 40, 10)
   const remo = mk('Remo con barra', '🚣', 'indigo', 'reps', 40, 10)
-  const dominadas = mk('Dominadas', '🧗', 'violet', 'reps', 30, 8)
+  const dominadas = mk(
+    'Dominadas',
+    '🧗',
+    'violet',
+    'reps',
+    30,
+    8,
+    'Antes de tirar, baja los hombros lejos de las orejas. Sin balanceo.',
+    'Agarra la barra con las palmas hacia adelante. Sube hasta pasar el mentón y baja controlado.',
+  )
+  const planchaLateral = mk('Plancha lateral', '📐', 'teal', 'time', 30, 0, 'Codo bajo el hombro, cadera alta.')
 
-  const step = (ex: Exercise, over: Partial<{ mode: 'time' | 'reps'; seconds: number; reps: number; sets: number; restBetweenSets: number; note: string }> = {}) => ({
+  const step = (
+    ex: Exercise,
+    over: Partial<{ mode: 'time' | 'reps' | 'max'; seconds: number; reps: number; sets: number; restBetweenSets: number; perSide: boolean; note: string }> = {},
+  ) => ({
     id: newId(),
     type: 'exercise' as const,
     exerciseId: ex.id,
@@ -52,6 +66,7 @@ export async function loadExamples(): Promise<void> {
     reps: over.reps ?? ex.defaultReps,
     sets: over.sets ?? 1,
     restBetweenSets: over.restBetweenSets ?? 0,
+    perSide: over.perSide,
     note: over.note,
   })
   const rest = (seconds: number) => ({ id: newId(), type: 'rest' as const, seconds })
@@ -64,14 +79,20 @@ export async function loadExamples(): Promise<void> {
     prepSeconds: 10,
     rounds: 3,
     restBetweenRounds: 60,
-    steps: [
-      step(sentadillas, { mode: 'time', seconds: 40 }),
-      rest(20),
-      step(burpees, { mode: 'time', seconds: 30 }),
-      rest(20),
-      step(escaladores, { mode: 'time', seconds: 30 }),
-      rest(20),
-      step(plancha, { mode: 'time', seconds: 45 }),
+    blocks: [
+      {
+        id: newId(),
+        name: '',
+        steps: [
+          step(sentadillas, { mode: 'time', seconds: 40 }),
+          rest(20),
+          step(burpees, { mode: 'time', seconds: 30 }),
+          rest(20),
+          step(escaladores, { mode: 'time', seconds: 30 }),
+          rest(20),
+          step(plancha, { mode: 'time', seconds: 45 }),
+        ],
+      },
     ],
     createdAt: now,
     updatedAt: now,
@@ -85,21 +106,31 @@ export async function loadExamples(): Promise<void> {
     prepSeconds: 5,
     rounds: 1,
     restBetweenRounds: 0,
-    steps: [
-      step(pressBanca, { sets: 4, reps: 10, restBetweenSets: 90 }),
-      rest(120),
-      step(remo, { sets: 4, reps: 10, restBetweenSets: 90 }),
-      rest(120),
-      step(dominadas, { sets: 3, reps: 8, restBetweenSets: 90 }),
-      rest(60),
-      step(flexiones, { sets: 2, reps: 15, restBetweenSets: 60, note: 'Al fallo en la última' }),
+    description: 'Gimnasio · 45–60 min',
+    blocks: [
+      {
+        id: newId(),
+        name: 'Principal',
+        steps: [
+          step(pressBanca, { sets: 4, reps: 10, restBetweenSets: 90, note: '8–12 reps' }),
+          rest(120),
+          step(remo, { sets: 4, reps: 10, restBetweenSets: 90 }),
+          rest(120),
+          step(dominadas, { sets: 3, reps: 8, restBetweenSets: 90 }),
+        ],
+      },
+      {
+        id: newId(),
+        name: 'Final',
+        steps: [rest(60), step(flexiones, { mode: 'max', note: 'Al fallo' }), rest(60), step(planchaLateral, { mode: 'time', seconds: 30, perSide: true })],
+      },
     ],
     createdAt: now + 1,
     updatedAt: now + 1,
   }
 
   await db.transaction('rw', db.exercises, db.routines, async () => {
-    await db.exercises.bulkAdd([sentadillas, flexiones, plancha, burpees, escaladores, pressBanca, remo, dominadas])
+    await db.exercises.bulkAdd([sentadillas, flexiones, plancha, burpees, escaladores, pressBanca, remo, dominadas, planchaLateral])
     await db.routines.bulkAdd([hiit, gym])
   })
 }

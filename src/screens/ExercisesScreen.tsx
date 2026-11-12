@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { Link } from 'wouter'
 import { BigTitle, EmptyState, IconBadge, Ico, inputCls } from '../components/ui'
 import { db } from '../db/db'
-import { dur } from '../lib/format'
+import { exerciseDefaultLabel } from '../lib/labels'
 
 export function ExercisesScreen() {
   const exercises = useLiveQuery(() => db.exercises.orderBy('name').toArray(), [])
@@ -23,7 +23,11 @@ export function ExercisesScreen() {
       </BigTitle>
       <div className="mx-auto max-w-lg px-4 pt-2">
         {(exercises?.length ?? 0) > 6 && <input className={`${inputCls} mb-3`} placeholder="Buscar…" value={q} onChange={(e) => setQ(e.target.value)} />}
-        {exercises?.length === 0 && <EmptyState emoji="💪" title="Sin ejercicios">Crea ejercicios para usarlos en tus rutinas.</EmptyState>}
+        {exercises?.length === 0 && (
+          <EmptyState emoji="💪" title="Sin ejercicios">
+            Crea ejercicios para usarlos en tus rutinas.
+          </EmptyState>
+        )}
         <div className="grid grid-cols-2 gap-2.5">
           {filtered.map((e) => (
             <Link key={e.id} href={`/ejercicio/${e.id}`} className="press flex flex-col gap-3 rounded-3xl bg-surface p-4">
@@ -33,7 +37,7 @@ export function ExercisesScreen() {
               </div>
               <div>
                 <div className="leading-tight font-semibold">{e.name}</div>
-                <div className="mt-0.5 text-sm text-muted">{e.defaultMode === 'time' ? `⏱ ${dur(e.defaultSeconds)}` : `✋ ${e.defaultReps} reps`}</div>
+                <div className="mt-0.5 text-sm text-muted">{exerciseDefaultLabel(e)}</div>
               </div>
             </Link>
           ))}

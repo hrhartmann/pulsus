@@ -5,13 +5,17 @@ encadena todo: ejercicios por tiempo que avanzan solos, ejercicios por repeticio
 **Listo**, descansos explícitos con timer y bips, y un timer general que corre desde que empiezas.
 
 - 🏋️ Rutinas y ejercicios con nombre, emoji o imagen, y color
-- ⏱ Pasos por **tiempo** (avanza solo) o por **repeticiones** (esperas a tocar “Listo”), con series y descanso entre series
+- 🧱 Rutinas organizadas en **bloques** (Calentamiento, Principal, Core…)
+- ⏱ Pasos por **tiempo** (avanza solo), por **repeticiones** o al **máximo** (esperan a tocar “Listo”; en el máximo anotas cuántas hiciste), con series y descanso entre series
+- ↔️ Ejercicios **por lado**: izquierda y derecha en cada serie
+- 📋 Ficha de cada ejercicio: descripción, tips, variante más fácil y más difícil
 - 😮‍💨 Descansos explícitos, siempre con timer
 - 🔔 Bip al empezar y al terminar cada paso, 3‑2‑1 antes de que termine cada timer, voz opcional
 - ⏮ ⏭ Atrás y adelante como capítulos de un video; lista de pasos para saltar a cualquiera
 - 📷 Imagen o GIF de técnica por ejercicio, visible mientras lo haces
 - 📈 Historial: cada rutina hecha queda guardada tal como se hizo (aunque después edites la rutina)
 - 📊 Exportar a CSV (Excel / Google Sheets) y respaldo completo en JSON
+- 📦 Importar **paquetes de rutinas** (.json) creados a mano o por un agente — ver [docs/PAQUETES.md](docs/PAQUETES.md)
 - 🔗 Compartir una rutina por link
 - 📴 Funciona sin internet; los datos viven en el teléfono
 
@@ -33,6 +37,8 @@ npm install
 npm run dev        # http://localhost:5173/pulsus/  (también en tu red local)
 npm test           # tests del motor del reproductor
 npm run build      # genera dist/
+npm run format     # prettier
+npm run validate-pack -- archivo.json   # valida un paquete de rutinas
 ```
 
 Para probar en el iPhone, sube los cambios a GitHub: el deploy es automático. (Desde `localhost` el
@@ -57,12 +63,16 @@ src/
     expand.ts         rutina → lista lineal de segmentos (series, vueltas, descansos)
     player.ts         motor del reproductor: funciones puras (start, tick, next, prev, jump, pause…)
     engine.test.ts    tests
-  db/                 IndexedDB con Dexie + datos de ejemplo
+  pack/               paquetes de rutinas: validar, importar, exportar (pulsus-pack/1)
+  db/                 IndexedDB con Dexie + migraciones + datos de ejemplo
   audio/audio.ts      bips con Web Audio + voz
   lib/                ajustes, exportar/importar, imágenes, wake lock, formato
   components/         UI reutilizable
   screens/            pantallas
-docs/PROPUESTA.md     decisiones de diseño
+public/pulsus-pack.schema.json   esquema JSON de los paquetes
+public/ejemplo.pulsus.json       paquete de ejemplo
+scripts/validate-pack.ts         validador de paquetes por línea de comandos
+docs/                            propuesta, decisiones y formato de paquetes
 ```
 
 Stack: React + TypeScript + Vite, Tailwind CSS, Dexie (IndexedDB), vite-plugin-pwa, Vitest.

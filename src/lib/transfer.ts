@@ -1,4 +1,4 @@
-import { db, newId } from '../db/db'
+import { db, normalizeExercise, normalizeRoutine } from '../db/db'
 import type { Exercise, IconValue, Routine, Session } from '../types'
 import { clock, isoLocal } from './format'
 
@@ -8,7 +8,8 @@ import { clock, isoLocal } from './format'
 
 interface Backup {
   app: 'pulsus'
-  version: 1
+  /** 1: rutinas con `steps`; 2: rutinas con `blocks`. Se aceptan ambas al restaurar. */
+  version: 1 | 2
   exportedAt: string
   exercises: Exercise[]
   routines: Routine[]
@@ -17,15 +18,10 @@ interface Backup {
 }
 
 export async function buildBackup(): Promise<Blob> {
-  const [exercises, routines, sessions, images] = await Promise.all([
-    db.exercises.toArray(),
-    db.routines.toArray(),
-    db.sessions.toArray(),
-    db.images.toArray(),
-  ])
+  const [exercises, routines, sessions, images] = await Promise.all([db.exercises.toArray(), db.routines.toArray(), db.sessions.toArray(), db.images.toArray()])
   const backup: Backup = {
     app: 'pulsus',
-    version: 1,
+    version: 2,
     exportedAt: new Date().toISOString(),
     exercises,
     routines,
@@ -42,8 +38,8 @@ export async function restoreBackup(file: File): Promise<{ exercises: number; ro
   const images = data.images.map((i) => ({ id: i.id, mime: i.mime, blob: base64ToBlob(i.data, i.mime) }))
   await db.transaction('rw', [db.exercises, db.routines, db.sessions, db.images], async () => {
     await db.images.bulkPut(images)
-    await db.exercises.bulkPut(data.exercises)
-    await db.routines.bulkPut(data.routines)
+    await db.exercises.bulkPut(data.exercises.map(normalizeExercise))
+    await db.routines.bulkPut(data.routines.map(normalizeRoutine))
     await db.sessions.bulkPut(data.sessions)
   })
   return { exercises: data.exercises.length, routines: data.routines.length, sessions: data.sessions.length }
@@ -66,6 +62,8 @@ function csv(rows: (string | number | boolean | undefined | null)[][]): Blob {
   return new Blob(['﻿' + text], { type: 'text/csv;charset=utf-8' })
 }
 
+const MODE = { time: 'tiempo', reps: 'repeticiones', max: 'maximo' } as const
+
 const iconText = (i: IconValue) => (i.kind === 'emoji' ? i.value : '[imagen]')
 
 export async function buildCsvFiles(): Promise<File[]> {
@@ -78,38 +76,63 @@ export async function buildCsvFiles(): Promise<File[]> {
   const stamp = isoLocal(Date.now()).slice(0, 10)
 
   const ejercicios = csv([
-    ['id', 'nombre', 'icono', 'modo', 'segundos', 'repeticiones', 'tiene_imagen_tecnica', 'notas'],
+    ['id', 'nombre', 'icono', 'modo', 'segundos', 'repeticiones', 'por_lado', 'tiene_imagen_tecnica', 'descripcion', 'tips', 'mas_facil', 'mas_dificil'],
     ...exercises.map((e) => [
       e.id,
       e.name,
       iconText(e.icon),
-      e.defaultMode === 'time' ? 'tiempo' : 'repeticiones',
+      MODE[e.defaultMode],
       e.defaultSeconds,
       e.defaultReps,
+      e.defaultPerSide ? 'si' : 'no',
       e.techniqueImageId ? 'si' : 'no',
-      e.notes,
+      e.description,
+      e.tips,
+      e.easier,
+      e.harder,
     ]),
   ])
 
   const rutinas = csv([
-    ['rutina_id', 'rutina', 'vueltas', 'descanso_entre_vueltas_seg', 'preparacion_seg', 'orden', 'tipo', 'ejercicio', 'modo', 'segundos', 'repeticiones', 'series', 'descanso_entre_series_seg', 'nota'],
+    [
+      'rutina_id',
+      'rutina',
+      'vueltas',
+      'descanso_entre_vueltas_seg',
+      'preparacion_seg',
+      'bloque',
+      'orden',
+      'tipo',
+      'ejercicio',
+      'modo',
+      'segundos',
+      'repeticiones',
+      'series',
+      'descanso_entre_series_seg',
+      'por_lado',
+      'nota',
+    ],
     ...routines.flatMap((r) =>
-      r.steps.map((s, i) => [
-        r.id,
-        r.name,
-        r.rounds,
-        r.restBetweenRounds,
-        r.prepSeconds,
-        i + 1,
-        s.type === 'rest' ? 'descanso' : 'ejercicio',
-        s.type === 'exercise' ? exName.get(s.exerciseId) ?? '(eliminado)' : s.label || 'Descanso',
-        s.type === 'exercise' ? (s.mode === 'time' ? 'tiempo' : 'repeticiones') : 'tiempo',
-        s.type === 'rest' || s.mode === 'time' ? s.seconds : '',
-        s.type === 'exercise' && s.mode === 'reps' ? s.reps : '',
-        s.type === 'exercise' ? s.sets : '',
-        s.type === 'exercise' ? s.restBetweenSets : '',
-        s.type === 'exercise' ? s.note : '',
-      ]),
+      r.blocks
+        .flatMap((b) => b.steps.map((s) => ({ b, s })))
+        .map(({ b, s }, i) => [
+          r.id,
+          r.name,
+          r.rounds,
+          r.restBetweenRounds,
+          r.prepSeconds,
+          b.name,
+          i + 1,
+          s.type === 'rest' ? 'descanso' : 'ejercicio',
+          s.type === 'exercise' ? (exName.get(s.exerciseId) ?? '(eliminado)') : s.label || 'Descanso',
+          s.type === 'exercise' ? MODE[s.mode] : 'tiempo',
+          s.type === 'rest' || s.mode === 'time' ? s.seconds : '',
+          s.type === 'exercise' && s.mode === 'reps' ? s.reps : '',
+          s.type === 'exercise' ? s.sets : '',
+          s.type === 'exercise' ? s.restBetweenSets : '',
+          s.type === 'exercise' && s.perSide ? 'si' : '',
+          s.type === 'exercise' ? s.note : '',
+        ]),
     ),
   ])
 
@@ -133,20 +156,23 @@ export async function buildCsvFiles(): Promise<File[]> {
   ])
 
   const detalle = csv([
-    ['sesion_id', 'fecha', 'rutina', 'orden', 'tipo', 'nombre', 'vuelta', 'serie', 'plan_seg', 'plan_reps', 'real_seg', 'estado', 'nota'],
+    ['sesion_id', 'fecha', 'rutina', 'orden', 'bloque', 'tipo', 'nombre', 'lado', 'vuelta', 'serie', 'plan_seg', 'plan_reps', 'real_seg', 'reps_hechas', 'estado', 'nota'],
     ...sessions.flatMap((s) =>
       s.segments.map((g, i) => [
         s.id,
         isoLocal(s.startedAt),
         s.routineName,
         i + 1,
+        g.block ?? '',
         g.kind === 'exercise' ? 'ejercicio' : g.kind === 'rest' ? 'descanso' : 'preparacion',
         g.name,
+        g.side === 'left' ? 'izquierda' : g.side === 'right' ? 'derecha' : '',
         g.round,
         g.set ? `${g.set}/${g.sets}` : '',
         g.plannedSeconds ?? '',
-        g.plannedReps ?? '',
+        g.max ? 'max' : (g.plannedReps ?? ''),
         Math.round(g.elapsedMs / 1000),
+        g.actualReps ?? '',
         g.status === 'done' ? 'hecho' : g.status === 'skipped' ? 'saltado' : 'pendiente',
         g.note,
       ]),
@@ -184,108 +210,7 @@ export async function shareOrDownload(files: File[], title: string): Promise<voi
   }
 }
 
-// =====================================================================
-// Compartir una rutina por link. La rutina viaja dentro del link (sin
-// servidor). Las imágenes no viajan: se usa el emoji o un icono genérico.
-// =====================================================================
-
-interface SharedRoutine {
-  v: 1
-  r: Omit<Routine, 'id' | 'createdAt' | 'updatedAt'>
-  e: { id: string; name: string; emoji: string; color: string; mode: Exercise['defaultMode']; seconds: number; reps: number; notes?: string }[]
-}
-
-export async function routineShareUrl(routine: Routine): Promise<string> {
-  const ids = new Set(routine.steps.flatMap((s) => (s.type === 'exercise' ? [s.exerciseId] : [])))
-  const exercises = (await db.exercises.bulkGet([...ids])).filter((e): e is Exercise => !!e)
-  const payload: SharedRoutine = {
-    v: 1,
-    r: {
-      name: routine.name,
-      icon: routine.icon.kind === 'emoji' ? routine.icon : { kind: 'emoji', value: '🏋️' },
-      color: routine.color,
-      prepSeconds: routine.prepSeconds,
-      rounds: routine.rounds,
-      restBetweenRounds: routine.restBetweenRounds,
-      steps: routine.steps,
-    },
-    e: exercises.map((e) => ({
-      id: e.id,
-      name: e.name,
-      emoji: e.icon.kind === 'emoji' ? e.icon.value : '💪',
-      color: e.color,
-      mode: e.defaultMode,
-      seconds: e.defaultSeconds,
-      reps: e.defaultReps,
-      notes: e.notes,
-    })),
-  }
-  const base = location.href.split('#')[0]
-  return `${base}#/importar/${toBase64Url(JSON.stringify(payload))}`
-}
-
-export function decodeSharedRoutine(encoded: string): SharedRoutine {
-  const data = JSON.parse(fromBase64Url(encoded)) as SharedRoutine
-  if (data.v !== 1 || !data.r?.steps) throw new Error('Link inválido')
-  return data
-}
-
-/** Crea la rutina compartida. Reutiliza tus ejercicios con el mismo nombre en vez de duplicarlos. */
-export async function importSharedRoutine(data: SharedRoutine): Promise<string> {
-  const now = Date.now()
-  const mine = await db.exercises.toArray()
-  const byName = new Map(mine.map((e) => [e.name.trim().toLowerCase(), e.id]))
-  const idMap = new Map<string, string>()
-  const toAdd: Exercise[] = []
-  for (const e of data.e) {
-    const existing = byName.get(e.name.trim().toLowerCase())
-    if (existing) {
-      idMap.set(e.id, existing)
-      continue
-    }
-    const id = newId()
-    idMap.set(e.id, id)
-    toAdd.push({
-      id,
-      name: e.name,
-      icon: { kind: 'emoji', value: e.emoji },
-      color: e.color,
-      notes: e.notes,
-      defaultMode: e.mode,
-      defaultSeconds: e.seconds,
-      defaultReps: e.reps,
-      createdAt: now,
-      updatedAt: now,
-    })
-  }
-  const routine: Routine = {
-    ...data.r,
-    id: newId(),
-    steps: data.r.steps.map((s) => (s.type === 'exercise' ? { ...s, id: newId(), exerciseId: idMap.get(s.exerciseId) ?? s.exerciseId } : { ...s, id: newId() })),
-    createdAt: now,
-    updatedAt: now,
-  }
-  await db.transaction('rw', db.exercises, db.routines, async () => {
-    await db.exercises.bulkAdd(toAdd)
-    await db.routines.add(routine)
-  })
-  return routine.id
-}
-
 // ---------- helpers ----------
-
-function toBase64Url(text: string): string {
-  const bytes = new TextEncoder().encode(text)
-  let bin = ''
-  bytes.forEach((b) => (bin += String.fromCharCode(b)))
-  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
-}
-
-function fromBase64Url(s: string): string {
-  const b64 = s.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((s.length + 3) % 4)
-  const bin = atob(b64)
-  return new TextDecoder().decode(Uint8Array.from(bin, (c) => c.charCodeAt(0)))
-}
 
 async function blobToBase64(blob: Blob): Promise<string> {
   const buf = new Uint8Array(await blob.arrayBuffer())

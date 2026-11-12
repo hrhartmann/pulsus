@@ -26,10 +26,7 @@ export interface PlayerState {
   lastTickAt: number
 }
 
-export type PlayerEvent =
-  | { type: 'segment-start'; index: number; at: number }
-  | { type: 'countdown'; remaining: number; at: number }
-  | { type: 'finish'; at: number }
+export type PlayerEvent = { type: 'segment-start'; index: number; at: number } | { type: 'countdown'; remaining: number; at: number } | { type: 'finish'; at: number }
 
 export interface Step {
   state: PlayerState
@@ -159,6 +156,14 @@ export function jump(s: PlayerState, target: number, now: number): Step {
   return goTo({ ...s, logs }, target, now)
 }
 
+/** Anota las repeticiones hechas en un segmento (máximo de reps). */
+export function setReps(s: PlayerState, index: number, reps: number): PlayerState {
+  if (!s.logs[index]) return s
+  const logs = s.logs.slice()
+  logs[index] = { ...logs[index], reps }
+  return { ...s, logs }
+}
+
 /** Terminar la rutina antes de tiempo. Lo que no hiciste queda como pendiente en el historial. */
 export function stop(s: PlayerState, now: number): PlayerState {
   if (isFinished(s)) return s
@@ -188,7 +193,7 @@ function finish(s: PlayerState, now: number, completed: boolean): Step {
 function withLog(logs: SegmentLog[], i: number, addMs: number, status: SegmentLog['status']): SegmentLog[] {
   if (!logs[i]) return logs
   const copy = logs.slice()
-  copy[i] = { elapsedMs: logs[i].elapsedMs + addMs, status }
+  copy[i] = { ...logs[i], elapsedMs: logs[i].elapsedMs + addMs, status }
   return copy
 }
 
@@ -203,6 +208,10 @@ export function toSession(s: PlayerState, routine: Routine, id: string): Session
     emoji: seg.icon.kind === 'emoji' ? seg.icon.value : undefined,
     plannedSeconds: seg.seconds,
     plannedReps: seg.reps,
+    max: seg.max,
+    actualReps: s.logs[i].reps,
+    side: seg.side,
+    block: seg.block,
     set: seg.set,
     sets: seg.sets,
     round: seg.round,

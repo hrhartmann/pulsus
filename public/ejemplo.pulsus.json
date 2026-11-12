@@ -1,0 +1,86 @@
+{
+  "format": "pulsus-pack/1",
+  "name": "Ejemplo — Tracción y core",
+  "description": "Paquete de ejemplo con todas las piezas del formato.",
+  "exercises": [
+    {
+      "id": "trote-suave",
+      "name": "Trote suave",
+      "emoji": "🏃",
+      "color": "green",
+      "description": "Trote a ritmo de conversación (zona 2).",
+      "tips": "Si solo puedes decir palabras sueltas, vas muy rápido.",
+      "mode": "time",
+      "seconds": 240
+    },
+    {
+      "id": "dominada-pronada",
+      "name": "Dominada pronada",
+      "emoji": "🧗",
+      "color": "violet",
+      "description": "Agarra la barra con las palmas hacia adelante, un poco más ancho que los hombros. Sube hasta pasar el mentón sobre la barra y baja en tres segundos.",
+      "tips": "Antes de tirar, baja los hombros lejos de las orejas. Piernas juntas, sin balanceo.",
+      "easier": "Negativas lentas.",
+      "harder": "Mochila con peso.",
+      "mode": "reps",
+      "reps": 5
+    },
+    {
+      "id": "plancha-lateral",
+      "name": "Plancha lateral",
+      "emoji": "📐",
+      "color": "teal",
+      "description": "De costado, apoyado en un antebrazo y los pies. Cadera alta, cuerpo en línea.",
+      "tips": "Codo bajo el hombro. Respira.",
+      "mode": "time",
+      "seconds": 20,
+      "perSide": true
+    },
+    {
+      "id": "sentadilla-bulgara",
+      "name": "Sentadilla búlgara",
+      "emoji": "🦵",
+      "color": "orange",
+      "description": "Pie de atrás sobre un banco. Baja la rodilla de atrás hacia el suelo y sube empujando con el talón de adelante.",
+      "tips": "Rodilla de adelante en línea con el pie. Empieza por la pierna más débil.",
+      "mode": "reps",
+      "reps": 8,
+      "perSide": true
+    }
+  ],
+  "routines": [
+    {
+      "id": "ejemplo-traccion",
+      "name": "Tracción + core",
+      "description": "Plaza con barra · 30 min",
+      "emoji": "🔴",
+      "color": "red",
+      "prepSeconds": 10,
+      "blocks": [
+        {
+          "name": "Calentamiento",
+          "steps": [{ "exercise": "trote-suave", "seconds": 240 }]
+        },
+        {
+          "name": "Test",
+          "steps": [{ "exercise": "dominada-pronada", "max": true, "note": "Estrictas, anota cuántas" }, { "rest": 180 }]
+        },
+        {
+          "name": "Principal",
+          "steps": [
+            { "exercise": "dominada-pronada", "reps": 5, "sets": 3, "restBetweenSets": 120, "note": "5–8 reps · bajar en 3 s" },
+            { "rest": 120 },
+            { "exercise": "sentadilla-bulgara", "reps": 8, "sets": 3, "restBetweenSets": 90, "perSide": true, "note": "8–12 por pierna · mochila 8 kg" }
+          ]
+        },
+        {
+          "name": "Core",
+          "steps": [
+            { "rest": 60, "label": "Prepara el mat" },
+            { "exercise": "plancha-lateral", "seconds": 20, "sets": 2, "restBetweenSets": 30, "perSide": true, "note": "20–30 s por lado" }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLocation, useParams } from 'wouter'
 import { IconPicker } from '../components/IconPicker'
-import { BlobImage, Button, Confirm, Field, Ico, IconButton, Segmented, Stepper, TopBar, inputCls } from '../components/ui'
+import { BlobImage, Button, Confirm, Field, Ico, IconButton, Segmented, Stepper, Toggle, TopBar, inputCls } from '../components/ui'
+import { MODE_OPTIONS } from '../lib/labels'
 import { db, deleteExercise, newId, routinesUsingExercise } from '../db/db'
 import { COLOR_KEYS } from '../lib/colors'
 import { dur } from '../lib/format'
@@ -110,7 +111,11 @@ export function ExerciseEditor() {
               </div>
             </div>
           ) : (
-            <button type="button" onClick={() => fileRef.current?.click()} className="press flex h-36 w-full flex-col items-center justify-center gap-1 rounded-3xl border border-dashed border-line text-muted">
+            <button
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              className="press flex h-36 w-full flex-col items-center justify-center gap-1 rounded-3xl border border-dashed border-line text-muted"
+            >
               <span className="text-3xl">📷</span>
               <span className="text-sm font-semibold">{busy ? 'Procesando…' : 'Agregar foto o GIF'}</span>
             </button>
@@ -119,24 +124,48 @@ export function ExerciseEditor() {
 
         <div className="space-y-5 rounded-3xl bg-surface p-4">
           <div className="text-xs font-semibold tracking-wider text-muted uppercase">Valores sugeridos al agregarlo a una rutina</div>
-          <Segmented
-            value={draft.defaultMode}
-            onChange={(defaultMode) => set({ defaultMode })}
-            options={[
-              { value: 'reps', label: '✋ Repeticiones' },
-              { value: 'time', label: '⏱ Tiempo' },
-            ]}
-          />
-          {draft.defaultMode === 'time' ? (
+          <Segmented value={draft.defaultMode} onChange={(defaultMode) => set({ defaultMode })} options={MODE_OPTIONS} />
+          {draft.defaultMode === 'time' && (
             <Stepper value={draft.defaultSeconds} onChange={(v) => set({ defaultSeconds: v })} min={5} max={1800} step={5} format={dur} presets={[20, 30, 40, 45, 60, 90]} />
-          ) : (
-            <Stepper value={draft.defaultReps} onChange={(v) => set({ defaultReps: v })} min={1} max={200} presets={[6, 8, 10, 12, 15, 20]} />
           )}
+          {draft.defaultMode === 'reps' && <Stepper value={draft.defaultReps} onChange={(v) => set({ defaultReps: v })} min={1} max={200} presets={[6, 8, 10, 12, 15, 20]} />}
+          <div className="-mb-2">
+            <Toggle checked={!!draft.defaultPerSide} onChange={(defaultPerSide) => set({ defaultPerSide })} label="Por lado" hint="Izquierda y derecha en cada serie." />
+          </div>
         </div>
 
-        <Field label="Notas">
-          <textarea className={`${inputCls} h-28 py-3`} placeholder="Claves de técnica, respiración, etc." value={draft.notes ?? ''} onChange={(e) => set({ notes: e.target.value })} />
-        </Field>
+        <div className="space-y-4">
+          <div className="text-xs font-semibold tracking-wider text-muted uppercase">Ficha</div>
+          <Field label="Descripción" hint="Cómo se hace. Se ve en el reproductor al tocar ⓘ.">
+            <textarea
+              className={`${inputCls} h-28 py-3`}
+              placeholder="Ej: Agarra la barra con las palmas hacia adelante…"
+              value={draft.description ?? ''}
+              onChange={(e) => set({ description: e.target.value })}
+            />
+          </Field>
+          <Field label="Tips">
+            <textarea
+              className={`${inputCls} h-24 py-3`}
+              placeholder="Claves de técnica, respiración, errores comunes…"
+              value={draft.tips ?? ''}
+              onChange={(e) => set({ tips: e.target.value })}
+            />
+          </Field>
+          <div className="grid grid-cols-2 gap-2">
+            <Field label="Más fácil">
+              <textarea className={`${inputCls} h-20 py-3 text-sm`} placeholder="Variante más fácil" value={draft.easier ?? ''} onChange={(e) => set({ easier: e.target.value })} />
+            </Field>
+            <Field label="Más difícil">
+              <textarea
+                className={`${inputCls} h-20 py-3 text-sm`}
+                placeholder="Variante más difícil"
+                value={draft.harder ?? ''}
+                onChange={(e) => set({ harder: e.target.value })}
+              />
+            </Field>
+          </div>
+        </div>
 
         {!isNew && (
           <Button variant="danger" className="w-full" onClick={() => setConfirmDelete(true)}>

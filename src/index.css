@@ -63,7 +63,9 @@ button {
 }
 
 .press {
-  transition: transform 120ms ease, opacity 120ms ease;
+  transition:
+    transform 120ms ease,
+    opacity 120ms ease;
 }
 .press:active {
   transform: scale(0.96);

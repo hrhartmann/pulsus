@@ -31,9 +31,7 @@ export async function saveImage(file: File, opts: { maxSize: number; square?: bo
   canvas.height = h
   const c = canvas.getContext('2d')!
   c.drawImage(bitmap, sx, sy, sw, sh, 0, 0, w, h)
-  const blob = await new Promise<Blob>((resolve, reject) =>
-    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('No se pudo procesar la imagen'))), 'image/jpeg', 0.85),
-  )
+  const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('No se pudo procesar la imagen'))), 'image/jpeg', 0.85))
   await db.images.add({ id, blob, mime: 'image/jpeg' })
   return id
 }

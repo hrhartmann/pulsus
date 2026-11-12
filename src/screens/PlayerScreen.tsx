@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useLocation, useParams } from 'wouter'
 import { audioReady, sounds, speak, unlockAudio } from '../audio/audio'
-import { BlobImage, Button, IconBadge, Ico, Sheet } from '../components/ui'
+import { useLiveQuery } from 'dexie-react-hooks'
+import { BlobImage, Button, IconBadge, Ico, Sheet, Stepper } from '../components/ui'
 import { db, exerciseMap, newId } from '../db/db'
-import { expandRoutine } from '../engine/expand'
+import { SIDE_LABEL, expandRoutine, segmentTarget } from '../engine/expand'
 import * as P from '../engine/player'
 import { type ActiveRun, clearActive, loadActive, saveActive } from '../lib/active'
 import { color } from '../lib/colors'
@@ -25,6 +26,10 @@ export function PlayerScreen() {
   const [showList, setShowList] = useState(false)
   const [showExit, setShowExit] = useState(false)
   const [zoomImage, setZoomImage] = useState<string | null>(null)
+  const [showFicha, setShowFicha] = useState(false)
+  const [askReps, setAskReps] = useState(false)
+  const [repsDraft, setRepsDraft] = useState(10)
+  const exerciseList = useLiveQuery(() => db.exercises.toArray(), [])
   const savedRef = useRef(false)
 
   // ---------- Eventos → sonidos y voz ----------
@@ -129,6 +134,8 @@ export function PlayerScreen() {
 
   const seg = P.current(state)!
   const nextSeg = state.segments[state.index + 1]
+  const exercise = seg.exerciseId ? exerciseList?.find((e) => e.id === seg.exerciseId) : undefined
+  const hasFicha = !!(exercise && (exercise.description || exercise.tips || exercise.easier || exercise.harder))
   const remaining = P.remainingMs(state, now)
   const segElapsed = P.segmentElapsedMs(state, now)
   const total = P.totalElapsedMs(state, now)
@@ -179,7 +186,8 @@ export function PlayerScreen() {
 
       {/* Contenido */}
       <div className="flex min-h-0 flex-1 flex-col items-center px-5 pt-4">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center justify-center gap-2">
+          {seg.block && <span className="rounded-full border border-white/15 px-3 py-1 text-xs font-bold tracking-wider text-muted uppercase">{seg.block}</span>}
           <span className="rounded-full px-3 py-1 text-xs font-bold tracking-[0.18em] uppercase" style={{ background: `${accent}26`, color: accent }}>
             {phase.label}
           </span>
@@ -198,7 +206,22 @@ export function PlayerScreen() {
         <div key={state.index} className="animate-pop mt-4 flex max-w-full items-center gap-3">
           <IconBadge icon={seg.icon} colorKey={seg.color} size={56} />
           <h1 className="min-w-0 font-display text-[clamp(2rem,10vw,3.4rem)] leading-[0.95] font-bold tracking-wide uppercase">{seg.name}</h1>
+          {hasFicha && (
+            <button
+              type="button"
+              aria-label="Ver ficha del ejercicio"
+              onClick={() => setShowFicha(true)}
+              className="press grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white/10 font-serif text-lg font-bold italic"
+            >
+              i
+            </button>
+          )}
         </div>
+        {seg.side && (
+          <div className="mt-3 rounded-full px-5 py-1.5 font-display text-2xl font-bold tracking-[0.2em] uppercase" style={{ background: `${accent}26`, color: accent }}>
+            {seg.side === 'left' ? `← ${SIDE_LABEL.left}` : `${SIDE_LABEL.right} →`}
+          </div>
+        )}
         {seg.note && <div className="mt-2 rounded-full bg-white/8 px-3 py-1 text-sm font-semibold">{seg.note}</div>}
 
         {/* Número principal */}
@@ -220,13 +243,16 @@ export function PlayerScreen() {
                   {paused && <div className="text-sm font-bold tracking-[0.3em] text-muted">EN PAUSA</div>}
                 </div>
                 <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-white/10">
-                  <div className="h-full rounded-full transition-[width] duration-200 ease-linear" style={{ width: `${(remaining! / ((seg.seconds ?? 1) * 1000)) * 100}%`, background: accent }} />
+                  <div
+                    className="h-full rounded-full transition-[width] duration-200 ease-linear"
+                    style={{ width: `${(remaining! / ((seg.seconds ?? 1) * 1000)) * 100}%`, background: accent }}
+                  />
                 </div>
               </div>
             ) : (
               <div className="flex items-end justify-center gap-3">
                 <div className="tabular font-display leading-[0.85] font-bold" style={{ fontSize: 'min(24vw, 12vh)', color: accent }}>
-                  {seg.reps}
+                  {seg.max ? 'MÁX' : seg.reps}
                 </div>
                 <div className="pb-1">
                   <div className="font-display text-xl leading-none font-bold tracking-[0.2em] text-muted">REPS</div>
@@ -241,7 +267,7 @@ export function PlayerScreen() {
               <Ring progress={remaining! / ((seg.seconds ?? 1) * 1000)} color={accent}>
                 <div
                   className={`tabular font-display leading-none font-bold transition-transform ${urgent ? 'scale-110' : ''}`}
-                  style={{ fontSize: 'min(27vw, 15vh)', color: urgent ? accent : undefined }}
+                  style={{ fontSize: formatRemaining(remaining!).length > 2 ? '30cqh' : '42cqh', color: urgent ? accent : undefined }}
                 >
                   {formatRemaining(remaining!)}
                 </div>
@@ -249,8 +275,8 @@ export function PlayerScreen() {
               </Ring>
             ) : (
               <div className="flex flex-col items-center">
-                <div className="tabular font-display leading-[0.85] font-bold" style={{ fontSize: 'min(42vw, 22vh)', color: accent }}>
-                  {seg.reps}
+                <div className="tabular font-display leading-[0.85] font-bold" style={{ fontSize: seg.max ? 'min(34vw, 18vh)' : 'min(42vw, 22vh)', color: accent }}>
+                  {seg.max ? 'MÁX' : seg.reps}
                 </div>
                 <div className="font-display text-xl font-bold tracking-[0.3em] text-muted">REPETICIONES</div>
                 <div className="tabular mt-2 text-sm text-faint">⏱ {clock(segElapsed / 1000)} en este ejercicio</div>
@@ -265,8 +291,11 @@ export function PlayerScreen() {
             <>
               <span className="font-semibold text-faint uppercase">Sigue</span>
               <IconBadge icon={nextSeg.icon} colorKey={nextSeg.color} size={26} />
-              <span className="min-w-0 flex-1 truncate font-semibold">{nextSeg.name}</span>
-              <span className="tabular text-muted">{nextSeg.advance === 'auto' ? dur(nextSeg.seconds ?? 0) : `${nextSeg.reps} reps`}</span>
+              <span className="min-w-0 flex-1 truncate font-semibold">
+                {nextSeg.name}
+                {nextSeg.side && <span className="font-normal text-muted"> · {SIDE_LABEL[nextSeg.side].toLowerCase()}</span>}
+              </span>
+              <span className="tabular text-muted">{segmentTarget(nextSeg, dur)}</span>
             </>
           ) : (
             <span className="w-full text-center font-semibold text-muted">🏁 Último paso</span>
@@ -282,7 +311,12 @@ export function PlayerScreen() {
         {seg.advance === 'manual' ? (
           <button
             type="button"
-            onClick={() => act(P.next)}
+            onClick={() => {
+              if (seg.max) {
+                setRepsDraft(state.logs[state.index].reps ?? lastMaxReps(state, seg) ?? 10)
+                setAskReps(true)
+              } else act(P.next)
+            }}
             className="press flex h-20 flex-1 items-center justify-center gap-2 rounded-full font-display text-3xl font-bold tracking-wider text-bg uppercase"
             style={{ background: accent, boxShadow: `0 10px 40px ${accent}66` }}
           >
@@ -310,26 +344,97 @@ export function PlayerScreen() {
           {state.segments.map((s, i) => {
             const st = state.logs[i].status
             const isCur = i === state.index
+            const header = s.block && s.block !== state.segments[i - 1]?.block ? s.block : null
             return (
-              <button
-                key={i}
-                type="button"
-                onClick={() => {
-                  act((cur, t) => P.jump(cur, i, t))
-                  setShowList(false)
-                }}
-                className={`press flex w-full items-center gap-3 rounded-2xl px-2 py-2 text-left ${isCur ? 'bg-white/10' : ''}`}
-              >
-                <span className="w-6 text-center text-sm text-faint">{st === 'done' ? '✓' : st === 'skipped' ? '↷' : i + 1}</span>
-                <IconBadge icon={s.icon} colorKey={s.color} size={34} />
-                <span className={`min-w-0 flex-1 truncate font-semibold ${st !== 'pending' && !isCur ? 'text-muted' : ''}`}>
-                  {s.name}
-                  {s.sets && <span className="font-normal text-muted"> · {s.set}/{s.sets}</span>}
-                </span>
-                <span className="tabular text-sm text-muted">{s.advance === 'auto' ? dur(s.seconds ?? 0) : `${s.reps} reps`}</span>
-              </button>
+              <div key={i}>
+                {header && <div className="px-2 pt-3 pb-1 text-xs font-bold tracking-wider text-muted uppercase">{header}</div>}
+                <button
+                  type="button"
+                  onClick={() => {
+                    act((cur, t) => P.jump(cur, i, t))
+                    setShowList(false)
+                  }}
+                  className={`press flex w-full items-center gap-3 rounded-2xl px-2 py-2 text-left ${isCur ? 'bg-white/10' : ''}`}
+                >
+                  <span className="w-6 text-center text-sm text-faint">{st === 'done' ? '✓' : st === 'skipped' ? '↷' : i + 1}</span>
+                  <IconBadge icon={s.icon} colorKey={s.color} size={34} />
+                  <span className={`min-w-0 flex-1 truncate font-semibold ${st !== 'pending' && !isCur ? 'text-muted' : ''}`}>
+                    {s.name}
+                    {s.sets && (
+                      <span className="font-normal text-muted">
+                        {' '}
+                        · {s.set}/{s.sets}
+                      </span>
+                    )}
+                    {s.side && <span className="font-normal text-muted"> · {SIDE_LABEL[s.side].toLowerCase()}</span>}
+                  </span>
+                  <span className="tabular text-sm text-muted">{state.logs[i].reps !== undefined ? `${state.logs[i].reps} reps ✓` : segmentTarget(s, dur)}</span>
+                </button>
+              </div>
             )
           })}
+        </div>
+      </Sheet>
+
+      {/* Ficha del ejercicio */}
+      <Sheet open={showFicha} onClose={() => setShowFicha(false)} title={seg.name}>
+        <div className="space-y-4 pt-1 pb-2">
+          {exercise?.description && <p className="text-lg leading-snug">{exercise.description}</p>}
+          {exercise?.tips && (
+            <div>
+              <div className="mb-1 text-xs font-bold tracking-wider text-muted uppercase">Tips</div>
+              <p className="leading-snug text-ink/90">{exercise.tips}</p>
+            </div>
+          )}
+          {(exercise?.easier || exercise?.harder) && (
+            <div className="grid grid-cols-2 gap-2">
+              {exercise?.easier && (
+                <div className="rounded-2xl bg-surface-2 p-3">
+                  <div className="mb-1 text-xs font-bold tracking-wider text-green-400 uppercase">Más fácil</div>
+                  <p className="text-sm">{exercise.easier}</p>
+                </div>
+              )}
+              {exercise?.harder && (
+                <div className="rounded-2xl bg-surface-2 p-3">
+                  <div className="mb-1 text-xs font-bold tracking-wider text-red-400 uppercase">Más difícil</div>
+                  <p className="text-sm">{exercise.harder}</p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </Sheet>
+
+      {/* ¿Cuántas hiciste? (máximo de reps) */}
+      <Sheet open={askReps} onClose={() => setAskReps(false)}>
+        <div className="pt-4 text-center">
+          <h2 className="font-display text-2xl font-bold tracking-wide uppercase">¿Cuántas hiciste?</h2>
+          <p className="mt-1 text-muted">
+            {seg.name}
+            {seg.side && ` · ${SIDE_LABEL[seg.side].toLowerCase()}`}
+          </p>
+          <div className="mx-auto mt-5 max-w-xs">
+            <Stepper value={repsDraft} onChange={setRepsDraft} min={0} max={500} />
+          </div>
+          <div className="mt-6 flex flex-col gap-2">
+            <Button
+              onClick={() => {
+                setAskReps(false)
+                act((cur, t) => P.next(P.setReps(cur, cur.index, repsDraft), t))
+              }}
+            >
+              Guardar y seguir
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setAskReps(false)
+                act(P.next)
+              }}
+            >
+              Seguir sin anotar
+            </Button>
+          </div>
         </div>
       </Sheet>
 
@@ -387,12 +492,12 @@ export function PlayerScreen() {
   )
 }
 
+/** El anillo ocupa el alto disponible (hasta 40% de la pantalla) para no montarse sobre el resto en pantallas chicas. */
 function Ring({ progress, color, children }: { progress: number; color: string; children: React.ReactNode }) {
-  const size = 'min(80vw, 40vh)'
   const r = 46
   const circ = 2 * Math.PI * r
   return (
-    <div className="relative grid shrink-0 place-items-center" style={{ width: size, height: size }}>
+    <div className="relative grid shrink-0 place-items-center" style={{ height: '100%', maxHeight: 'min(80vw, 40vh)', aspectRatio: '1', containerType: 'size' }}>
       <svg viewBox="0 0 100 100" className="absolute inset-0 -rotate-90">
         <circle cx="50" cy="50" r={r} fill="none" stroke="#ffffff14" strokeWidth="4" />
         <circle
@@ -419,7 +524,10 @@ function FinishedView({ run, onDone, onHistory }: { run: ActiveRun; onDone: () =
   const done = exLogs.filter((x) => x.l.status === 'done').length
   const c = color(routine.color)
   return (
-    <div className="pt-safe pb-safe fixed inset-0 flex flex-col items-center justify-center px-6 text-center" style={{ background: `radial-gradient(120% 60% at 50% 30%, ${c.solid}33, var(--color-bg) 75%)` }}>
+    <div
+      className="pt-safe pb-safe fixed inset-0 flex flex-col items-center justify-center px-6 text-center"
+      style={{ background: `radial-gradient(120% 60% at 50% 30%, ${c.solid}33, var(--color-bg) 75%)` }}
+    >
       <div className="animate-pop text-7xl">{state.completed ? '🏆' : '💾'}</div>
       <h1 className="mt-4 font-display text-5xl font-bold tracking-wide uppercase">{state.completed ? '¡Completa!' : 'Guardada'}</h1>
       <div className="mt-2 flex items-center gap-2 text-muted">
@@ -459,12 +567,23 @@ function formatRemaining(ms: number): string {
   return s >= 60 ? clock(s) : String(s)
 }
 
+/** Lo que anotaste la última vez en este mismo ejercicio dentro de la rutina (para partir de ahí). */
+function lastMaxReps(state: P.PlayerState, seg: Segment): number | undefined {
+  for (let i = state.index - 1; i >= 0; i--) {
+    if (state.segments[i].exerciseId === seg.exerciseId && state.logs[i].reps !== undefined) return state.logs[i].reps
+  }
+  return undefined
+}
+
 function announce(seg: Segment, next?: Segment): string {
   const nextName = next ? next.name : ''
   if (seg.kind === 'prep') return `Prepárate. ${nextName ? `Primero: ${nextName}` : ''}`
   if (seg.kind === 'rest') return `${seg.name}, ${spokenDur(seg.seconds ?? 0)}.${nextName ? ` Sigue: ${nextName}` : ''}`
   const set = seg.sets ? `, serie ${seg.set} de ${seg.sets}` : ''
-  return seg.advance === 'auto' ? `${seg.name}${set}, ${spokenDur(seg.seconds ?? 0)}` : `${seg.name}${set}, ${seg.reps} repeticiones`
+  const side = seg.side ? `, ${SIDE_LABEL[seg.side].toLowerCase()}` : ''
+  if (seg.advance === 'auto') return `${seg.name}${side}${set}, ${spokenDur(seg.seconds ?? 0)}`
+  if (seg.max) return `${seg.name}${side}${set}, máximo de repeticiones`
+  return `${seg.name}${side}${set}, ${seg.reps} repeticiones`
 }
 
 function spokenDur(s: number): string {

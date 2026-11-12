@@ -6,15 +6,18 @@ import { loadExamples } from '../db/seed'
 import { isoLocal } from '../lib/format'
 import { setSettings, useSettings } from '../lib/settings'
 import { buildBackup, buildCsvFiles, restoreBackup, shareOrDownload } from '../lib/transfer'
+import { exportAllAsPack } from '../pack/io'
+import { useLocation } from 'wouter'
+import { setPendingPack } from './ImportScreen'
 
 /** En GitHub Pages (usuario.github.io/pulsus) deduce el repo; en otro hosting no muestra el link. */
-const REPO_URL = location.hostname.endsWith('github.io')
-  ? `https://github.com/${location.hostname.split('.')[0]}/${location.pathname.split('/')[1] || 'pulsus'}`
-  : null
+const REPO_URL = location.hostname.endsWith('github.io') ? `https://github.com/${location.hostname.split('.')[0]}/${location.pathname.split('/')[1] || 'pulsus'}` : null
 
 export function SettingsScreen() {
   const s = useSettings()
   const fileRef = useRef<HTMLInputElement>(null)
+  const packRef = useRef<HTMLInputElement>(null)
+  const [, navigate] = useLocation()
   const [msg, setMsg] = useState('')
   const [confirmWipe, setConfirmWipe] = useState(false)
 
@@ -32,7 +35,15 @@ export function SettingsScreen() {
           <Toggle checked={s.countdown} onChange={(countdown) => setSettings({ countdown })} label="Cuenta regresiva 3‑2‑1" hint="Antes de que termine cada timer." />
           <div className="py-3">
             <div className="mb-2 font-medium">Volumen</div>
-            <input type="range" min={0.1} max={1} step={0.05} value={s.volume} onChange={(e) => setSettings({ volume: Number(e.target.value) })} className="w-full accent-[var(--color-accent)]" />
+            <input
+              type="range"
+              min={0.1}
+              max={1}
+              step={0.05}
+              value={s.volume}
+              onChange={(e) => setSettings({ volume: Number(e.target.value) })}
+              className="w-full accent-[var(--color-accent)]"
+            />
           </div>
           <Toggle checked={s.voice} onChange={(voice) => setSettings({ voice })} label="Voz" hint="Anuncia cada ejercicio y lo que sigue." />
           <div className="py-3">
@@ -63,6 +74,41 @@ export function SettingsScreen() {
           >
             🔊 Probar sonido
           </Button>
+        </Section>
+
+        <Section title="Rutinas desde archivo">
+          <p className="pb-3 text-sm text-muted">
+            Un <b>paquete</b> (.json) trae ejercicios y rutinas listos. Si ya los tienes, se actualizan sin duplicarse; tu historial no cambia.
+          </p>
+          <input
+            ref={packRef}
+            type="file"
+            accept="application/json,.json"
+            className="hidden"
+            onChange={async (e) => {
+              const f = e.target.files?.[0]
+              e.target.value = ''
+              if (!f) return
+              setPendingPack(await f.text())
+              navigate('/importar/archivo')
+            }}
+          />
+          <div className="space-y-2">
+            <Button className="w-full" onClick={() => packRef.current?.click()}>
+              📦 Importar paquete de rutinas
+            </Button>
+            <Button
+              variant="secondary"
+              className="w-full"
+              onClick={async () => {
+                const pack = await exportAllAsPack()
+                const file = new File([JSON.stringify(pack, null, 2)], `pulsus-rutinas-${isoLocal(Date.now()).slice(0, 10)}.json`, { type: 'application/json' })
+                await shareOrDownload([file], 'Rutinas Pulsus')
+              }}
+            >
+              📤 Exportar mis rutinas como paquete
+            </Button>
+          </div>
         </Section>
 
         <Section title="Tus datos">

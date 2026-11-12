@@ -112,7 +112,12 @@ export function Button({
     ghost: 'text-muted',
   }[variant]
   return (
-    <button type={type} disabled={disabled} onClick={onClick} className={`press flex h-12 items-center justify-center gap-2 rounded-2xl px-5 font-semibold disabled:opacity-40 ${styles} ${className}`}>
+    <button
+      type={type}
+      disabled={disabled}
+      onClick={onClick}
+      className={`press flex h-12 items-center justify-center gap-2 rounded-2xl px-5 font-semibold disabled:opacity-40 ${styles} ${className}`}
+    >
       {children}
     </button>
   )
