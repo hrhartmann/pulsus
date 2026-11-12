@@ -1,0 +1,44 @@
+# Pulsus — decisiones (2026-10-22)
+
+Lo que se decidió a partir de [PROPUESTA.md](PROPUESTA.md) (la propuesta original, que se mantiene como referencia).
+
+## Decidido
+
+- **Nombre:** Pulsus.
+- **Plataforma:** PWA (web instalable). Se acepta que no se conecta con la app Reloj del iPhone y que la app
+  tiene que estar abierta durante la rutina. Plan B nativo (SwiftUI + AlarmKit) solo si en la práctica molesta.
+- **Repo público** en GitHub, hosting en **GitHub Pages** (en vez de Cloudflare Pages).
+- **Todo lo de la contrapropuesta entra en la primera versión**: repeticiones, series, historial, compartir por link,
+  voz, imagen de técnica, CSV.
+
+## Cambios respecto a la propuesta
+
+1. **Dos tipos de ejercicio dentro de una rutina:**
+   - **Por tiempo**: corre el timer y avanza solo.
+   - **Por repeticiones**: muestra el número de repeticiones y **espera a que toques “Listo”**. Ej: press banca.
+2. **Descansos explícitos.** Un descanso es un paso propio de la rutina, siempre con timer y bips.
+   Además, un ejercicio con varias series puede llevar “descanso entre series”, que el reproductor convierte en
+   descansos explícitos entre cada serie (no después de la última).
+3. **Reproductor como un video cortado en capítulos:** ⏮ vuelve al paso anterior (reinicia su timer), ⏭ salta al
+   siguiente, y la lista de pasos permite saltar a cualquiera.
+4. **Timer general** visible arriba, corre desde que empiezas hasta que terminas y **nunca se pausa**.
+   La pausa solo detiene el timer del paso actual.
+5. **Historial desde el día 1**: cada rutina realizada guarda una copia de la rutina tal como se hizo y el detalle
+   de cada paso (tiempo real, hecho / saltado / pendiente). Si después editas o borras la rutina, el historial no cambia.
+   Si terminas antes, se guarda como incompleta.
+6. **El modelo cambió**: el paso de ejercicio ya no tiene “descanso después”; los descansos son pasos propios.
+
+```
+Routine { name, icon, color, prepSeconds, rounds, restBetweenRounds, steps[] }
+  step = { type: 'exercise', exerciseId, mode: 'time'|'reps', seconds, reps, sets, restBetweenSets, note }
+       | { type: 'rest', seconds, label }
+
+Session { routineName, startedAt, endedAt, durationMs, completed, routineSnapshot, segments[] }
+  segment = { kind, name, plannedSeconds|plannedReps, set, round, elapsedMs, status }
+```
+
+## Pendiente de probar en un iPhone real
+
+- Que los bips suenen con el switch de silencio activado (Ajustes → “Con música de fondo”).
+- Cómo convive con Spotify: “Encima” (baja la música un momento), “Mezclar” o “Solo”.
+- Que la pantalla no se apague durante una rutina (Wake Lock, iOS 18.4+).
