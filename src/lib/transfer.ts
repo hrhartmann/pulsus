@@ -1,3 +1,4 @@
+import { FORMULAS, SITE_INFO, computeBody, type Measurement, type SkinfoldSite } from '../body/bodyfat'
 import { db, normalizeExercise, normalizeRoutine } from '../db/db'
 import type { Exercise, IconValue, Routine, Session } from '../types'
 import { clock, isoLocal } from './format'
@@ -10,6 +11,8 @@ interface Backup {
   app: 'pulsus'
   /** 1: rutinas con `steps`; 2: rutinas con `blocks`. Se aceptan ambas al restaurar. */
   version: 1 | 2
+  /** Desde v0.3. Puede no venir en respaldos anteriores. */
+  measurements?: Measurement[]
   exportedAt: string
   exercises: Exercise[]
   routines: Routine[]
@@ -18,7 +21,13 @@ interface Backup {
 }
 
 export async function buildBackup(): Promise<Blob> {
-  const [exercises, routines, sessions, images] = await Promise.all([db.exercises.toArray(), db.routines.toArray(), db.sessions.toArray(), db.images.toArray()])
+  const [exercises, routines, sessions, images, measurements] = await Promise.all([
+    db.exercises.toArray(),
+    db.routines.toArray(),
+    db.sessions.toArray(),
+    db.images.toArray(),
+    db.measurements.toArray(),
+  ])
   const backup: Backup = {
     app: 'pulsus',
     version: 2,
@@ -26,6 +35,7 @@ export async function buildBackup(): Promise<Blob> {
     exercises,
     routines,
     sessions,
+    measurements,
     images: await Promise.all(images.map(async (i) => ({ id: i.id, mime: i.mime, data: await blobToBase64(i.blob) }))),
   }
   return new Blob([JSON.stringify(backup)], { type: 'application/json' })
@@ -36,7 +46,8 @@ export async function restoreBackup(file: File): Promise<{ exercises: number; ro
   const data = JSON.parse(await file.text()) as Backup
   if (data.app !== 'pulsus') throw new Error('Este archivo no es un respaldo de Pulsus.')
   const images = data.images.map((i) => ({ id: i.id, mime: i.mime, blob: base64ToBlob(i.data, i.mime) }))
-  await db.transaction('rw', [db.exercises, db.routines, db.sessions, db.images], async () => {
+  await db.transaction('rw', [db.exercises, db.routines, db.sessions, db.images, db.measurements], async () => {
+    if (data.measurements) await db.measurements.bulkPut(data.measurements)
     await db.images.bulkPut(images)
     await db.exercises.bulkPut(data.exercises.map(normalizeExercise))
     await db.routines.bulkPut(data.routines.map(normalizeRoutine))
@@ -179,7 +190,53 @@ export async function buildCsvFiles(): Promise<File[]> {
     ),
   ])
 
+  const SITES = Object.keys(SITE_INFO) as SkinfoldSite[]
+  const allMeasurements = await db.measurements.orderBy('date').toArray()
+  const dec = (v: number | undefined) => (v === undefined ? '' : String(Math.round(v * 100) / 100).replace('.', ','))
+  const mediciones = csv([
+    [
+      'fecha',
+      'sexo',
+      'edad',
+      'peso_kg',
+      'altura_cm',
+      'formula',
+      ...SITES.map((x) => `${SITE_INFO[x].name.toLowerCase().replace(' ', '_')}_mm`),
+      'suma_mm',
+      'densidad',
+      'grasa_pct_siri',
+      'grasa_pct_brozek',
+      'masa_grasa_kg',
+      'masa_magra_kg',
+      'indice_masa_magra',
+      'imc',
+      'nota',
+    ],
+    ...allMeasurements.map((m) => {
+      const r = computeBody(m)
+      return [
+        isoLocal(m.date).slice(0, 10),
+        m.sex === 'male' ? 'hombre' : 'mujer',
+        m.age,
+        dec(m.weightKg),
+        dec(m.heightCm),
+        FORMULAS[m.formula].name,
+        ...SITES.map((x) => dec(m.skinfolds[x])),
+        dec(r?.sum),
+        r ? r.density.toFixed(4).replace('.', ',') : '',
+        dec(r?.bodyFatPct),
+        dec(r?.brozekPct),
+        dec(r?.fatMassKg),
+        dec(r?.leanMassKg),
+        dec(r?.ffmi),
+        dec(r?.bmi),
+        m.note,
+      ]
+    }),
+  ])
+
   return [
+    new File([mediciones], `pulsus-mediciones-${stamp}.csv`, { type: 'text/csv' }),
     new File([ejercicios], `pulsus-ejercicios-${stamp}.csv`, { type: 'text/csv' }),
     new File([rutinas], `pulsus-rutinas-${stamp}.csv`, { type: 'text/csv' }),
     new File([historial], `pulsus-historial-${stamp}.csv`, { type: 'text/csv' }),

@@ -55,3 +55,12 @@ Session { routineName, startedAt, endedAt, durationMs, completed, routineSnapsho
 - **Paquetes de rutinas** (`pulsus-pack/1`) para que otro agente cree rutinas y Hans solo las importe.
   Importar es idempotente (ids estables). Ver docs/PAQUETES.md.
 - Las alternativas (“si no hay paralelas…”) no tienen campo propio: van en `note` o en `easier`.
+
+## v0.3 (2026-11-13)
+
+- Nueva pestaña **Cuerpo**: % de grasa con plicómetro. Pide sexo, edad, peso, altura y los pliegues en mm.
+- Fórmulas: Jackson‑Pollock 3 pliegues (por defecto), Jackson‑Pollock 7 y Durnin‑Womersley 4; la densidad se
+  convierte con Siri (Brozek como referencia). La app muestra el cálculo paso a paso.
+- Registro de mediciones con evolución, masa magra, masa grasa e índice de masa magra. Entra en el respaldo y en el CSV.
+- Guía dentro de la app: técnica de medición, ubicación de cada pliegue, fórmulas, margen de error (±3–4 puntos),
+  por qué la masa magra no es solo músculo (agua) y qué hacer para bajar el % (alimentación primero).

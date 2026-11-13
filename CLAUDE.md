@@ -26,6 +26,15 @@ Repo: https://github.com/hrhartmann/pulsus · App: https://hrhartmann.github.io/
   lados (Izquierda/Derecha + 5 s de cambio si es por tiempo), descansos entre series y vueltas.
 - `Session`: historial. Copia de cada segmento con tiempo real, estado y reps anotadas (`actualReps`).
 
+## Composición corporal (src/body/)
+- `bodyfat.ts` es puro: fórmulas de densidad (Jackson‑Pollock 3 y 7, Durnin‑Womersley 4) + Siri/Brozek, masa grasa,
+  masa magra, índice de masa magra, categorías ACE. Los coeficientes tienen test con valores calculados a mano:
+  no cambiarlos sin fuente.
+- `Measurement` guarda las ENTRADAS (sexo, edad, peso, altura, pliegues, fórmula) y el % resultante; el resto se
+  recalcula con `computeBody()`.
+- Pantallas: `BodyScreen` (resumen + registro), `MeasurementEditor`, `BodyGuide` (cómo medirse, fórmulas, cómo leer).
+- Los textos de la guía son contenido de salud: mantenerlos sobrios, con el margen de error y sin prometer precisión.
+
 ## Reglas que no hay que romper
 - **El motor del reproductor (`src/engine/player.ts`) es puro**: recibe `now` y devuelve estado + eventos. Nada de
   `setInterval`, `Date.now()` ni efectos ahí. Todo cambio va con test en `engine.test.ts`.
@@ -40,7 +49,7 @@ Repo: https://github.com/hrhartmann/pulsus · App: https://hrhartmann.github.io/
 - **Duraciones en el paso de la rutina, no en el ejercicio.** El ejercicio solo trae valores sugeridos.
 - **Sin rangos** en ningún lado (ni app ni paquetes): números fijos, el rango va en `note`.
 - **Esquema de la base de datos**: para cambiarlo, agrega `db.version(n+1)` con `.upgrade()` en `src/db/db.ts`; nunca
-  edites una versión existente (los teléfonos ya tienen datos). v2 pasó `steps` → `blocks` y `notes` → `tips`.
+  edites una versión existente (los teléfonos ya tienen datos). v2 pasó `steps` → `blocks` y `notes` → `tips`; v3 agregó la tabla `measurements`.
   Los respaldos viejos se normalizan al restaurar (`normalizeRoutine`, `normalizeExercise`).
 - **Importar paquetes es idempotente**: ejercicios por id y luego por nombre; rutinas por id (se reemplazan).
   Nunca se pisan la imagen de técnica ni los iconos de imagen.

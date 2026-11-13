@@ -5,6 +5,9 @@ import { useRegisterSW } from 'virtual:pwa-register/react'
 import { requestPersistence } from './db/db'
 import { seedIfFirstRun } from './db/seed'
 import { loadActive } from './lib/active'
+import { BodyGuide } from './screens/BodyGuide'
+import { BodyScreen } from './screens/BodyScreen'
+import { MeasurementEditor } from './screens/MeasurementEditor'
 import { ExerciseEditor } from './screens/ExerciseEditor'
 import { ExercisesScreen } from './screens/ExercisesScreen'
 import { HistoryScreen, SessionDetail } from './screens/HistoryScreen'
@@ -29,11 +32,14 @@ export default function App() {
         <Route path="/ejercicio/:id" component={ExerciseEditor} />
         <Route path="/historial/:id" component={SessionDetail} />
         <Route path="/importar/:data" component={ImportScreen} />
+        <Route path="/medicion/:id" component={MeasurementEditor} />
+        <Route path="/cuerpo/guia" component={BodyGuide} />
         <Route>
           <TabLayout>
             <Switch>
               <Route path="/ejercicios" component={ExercisesScreen} />
               <Route path="/historial" component={HistoryScreen} />
+              <Route path="/cuerpo" component={BodyScreen} />
               <Route path="/ajustes" component={SettingsScreen} />
               <Route component={RoutinesScreen} />
             </Switch>
@@ -61,6 +67,7 @@ const TABS = [
   { href: '/', label: 'Rutinas', icon: '⚡' },
   { href: '/ejercicios', label: 'Ejercicios', icon: '💪' },
   { href: '/historial', label: 'Historial', icon: '📈' },
+  { href: '/cuerpo', label: 'Cuerpo', icon: '📏' },
   { href: '/ajustes', label: 'Ajustes', icon: '⚙️' },
 ]
 

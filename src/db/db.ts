@@ -1,4 +1,5 @@
 import Dexie, { type EntityTable } from 'dexie'
+import type { Measurement } from '../body/bodyfat'
 import type { Exercise, Routine, RoutineStep, Session, StoredImage } from '../types'
 
 /**
@@ -10,6 +11,7 @@ export const db = new Dexie('pulsus') as Dexie & {
   routines: EntityTable<Routine, 'id'>
   sessions: EntityTable<Session, 'id'>
   images: EntityTable<StoredImage, 'id'>
+  measurements: EntityTable<Measurement, 'id'>
 }
 
 db.version(1).stores({
@@ -40,6 +42,9 @@ db.version(2)
         delete e.notes
       })
   })
+
+// v3: mediciones de composición corporal (plicómetro).
+db.version(3).stores({ measurements: 'id, date' })
 
 export function newId(): string {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return crypto.randomUUID()

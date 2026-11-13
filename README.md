@@ -13,6 +13,7 @@ encadena todo: ejercicios por tiempo que avanzan solos, ejercicios por repeticio
 - 🔔 Bip al empezar y al terminar cada paso, 3‑2‑1 antes de que termine cada timer, voz opcional
 - ⏮ ⏭ Atrás y adelante como capítulos de un video; lista de pasos para saltar a cualquiera
 - 📷 Imagen o GIF de técnica por ejercicio, visible mientras lo haces
+- 📏 **% de grasa con plicómetro**: Jackson‑Pollock (3 o 7 pliegues) o Durnin‑Womersley + Siri, masa magra y grasa, registro con evolución y guía para medirse
 - 📈 Historial: cada rutina hecha queda guardada tal como se hizo (aunque después edites la rutina)
 - 📊 Exportar a CSV (Excel / Google Sheets) y respaldo completo en JSON
 - 📦 Importar **paquetes de rutinas** (.json) creados a mano o por un agente — ver [docs/PAQUETES.md](docs/PAQUETES.md)

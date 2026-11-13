@@ -158,7 +158,8 @@ export function SettingsScreen() {
             {msg && <div className="animate-fade rounded-2xl bg-surface-2 p-3 text-center text-sm">{msg}</div>}
           </div>
           <p className="pt-3 text-xs text-faint">
-            El CSV trae 4 archivos: ejercicios, rutinas, historial y detalle del historial. Separados por “;”, se abren directo en Excel. En Google Sheets: Archivo → Importar.
+            El CSV trae 5 archivos: ejercicios, rutinas, historial, detalle del historial y mediciones de % de grasa. Separados por “;”, se abren directo en Excel. En Google
+            Sheets: Archivo → Importar.
           </p>
         </Section>
 
@@ -195,10 +196,10 @@ export function SettingsScreen() {
         open={confirmWipe}
         danger
         title="¿Borrar todo?"
-        message="Se borran rutinas, ejercicios, imágenes e historial de este teléfono. No se puede deshacer."
+        message="Se borran rutinas, ejercicios, imágenes, historial y mediciones de este teléfono. No se puede deshacer."
         confirmLabel="Borrar todo"
         onConfirm={async () => {
-          await Promise.all([db.routines.clear(), db.exercises.clear(), db.sessions.clear(), db.images.clear()])
+          await Promise.all([db.routines.clear(), db.exercises.clear(), db.sessions.clear(), db.images.clear(), db.measurements.clear()])
           setConfirmWipe(false)
           flash('Datos borrados.')
         }}
